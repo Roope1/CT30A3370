@@ -2,6 +2,7 @@
 # include <stdlib.h>
 # include <string.h>
 # include <unistd.h>
+# include <sys/wait.h>
 
 
 char *remove_newline(char *str) {
@@ -11,7 +12,7 @@ char *remove_newline(char *str) {
     return str;
 }
 
-void execute_command(char **path, char *command) {
+void execute_command(char **path, char *command, char *args) {
     // try find command in each path in array
     for (int i = 0; i < sizeof(&path) / sizeof(char*); i++) {
         char *full_path = (char *)malloc(strlen(path[i]) + strlen(command) + 1);
@@ -27,13 +28,38 @@ void execute_command(char **path, char *command) {
         // check if file exists
         if (access(full_path, F_OK) != -1) {
             // file exists
-            char *args[] = {full_path, NULL};
-            execvp(args[0], args); //TODO: add wait for child process to finish
+
+            // create args array
+
+            char *args[] = {full_path, NULL}; 
+            
+            // fork and exec
+            pid_t pid = fork();
+            if (pid < 0) {
+                fprintf(stderr, "Error forking\n");
+                exit(1);
+            }
+            else if (pid == 0) {
+                execvp(args[0], args);
+            }
+            else {
+                wait(NULL);
+            }
         }
         free(full_path);
     }
 }
 
+char* get_args(char *input) {
+    char *args = (char *)malloc(strlen(input) + 1);
+    if (args == NULL) {
+        fprintf(stderr, "Error allocating memory for args\n");
+        exit(1);
+    }
+    strcpy(args, input);
+    printf("args: %s\n", args);
+    return args;
+}
 
 
 int main(int argc, char *argv[]) {
@@ -57,8 +83,18 @@ int main(int argc, char *argv[]) {
         fprintf(stdout, "wish> ");
         getline(&input, &len, stdin);
 
+        // get raw input
+        char *raw_input = (char *)malloc(strlen(input) + 1);
+        if (raw_input == NULL) {
+            fprintf(stderr, "Error allocating memory for raw_input\n");
+            exit(1);
+        }
+        strcpy(raw_input, input);
+
+
         // tokenize input on spaces
         char *token = strtok(input, " ");
+
         
         // DEBUG ONLY
         if (token == 0) {
@@ -100,17 +136,17 @@ int main(int argc, char *argv[]) {
         
         else {
             // check path for commands
-            execute_command(path, token);
+            // print current token
+            printf("current token: %s\n", token);
+            // print full commnad
+            printf("full command: %s\n", raw_input);
+            
+
+            execute_command(path, token, get_args(raw_input));
+
         }
     }
 
-
-    // fork ls and quit
-    if (argc == 1) {
-        char *args[] = {"/bin/ls", NULL};
-        execvp(args[0], args);
-    }
-    
     return 0;
 
 }
