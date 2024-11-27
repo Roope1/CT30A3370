@@ -4,6 +4,7 @@
 # include <unistd.h>
 # include <sys/wait.h>
 
+#define DEBUG 1
 
 char *remove_newline(char *str) {
     if (str[strlen(str) - 1] == '\n') {
@@ -37,7 +38,6 @@ void execute_command(char **path, char *command, char *args) {
             pid_t pid = fork();
             if (pid < 0) {
                 fprintf(stderr, "Error forking\n");
-                exit(1);
             }
             else if (pid == 0) {
                 execvp(args[0], args);
@@ -54,7 +54,6 @@ char* get_args(char *input) {
     char *args = (char *)malloc(strlen(input) + 1);
     if (args == NULL) {
         fprintf(stderr, "Error allocating memory for args\n");
-        exit(1);
     }
     strcpy(args, input);
     printf("args: %s\n", args);
@@ -68,7 +67,6 @@ int main(int argc, char *argv[]) {
     path = (char **)malloc(sizeof(char*));
     if (path == NULL) {
         fprintf(stderr, "Error allocating memory for path\n");
-        exit(1);
     }
 
     // initialize path to /bin
@@ -87,7 +85,6 @@ int main(int argc, char *argv[]) {
         char *raw_input = (char *)malloc(strlen(input) + 1);
         if (raw_input == NULL) {
             fprintf(stderr, "Error allocating memory for raw_input\n");
-            exit(1);
         }
         strcpy(raw_input, input);
 
@@ -97,7 +94,7 @@ int main(int argc, char *argv[]) {
 
         
         // DEBUG ONLY
-        if (token == 0) {
+        if (DEBUG && token == 0) {
             printf("token was null");
         }
 
@@ -117,15 +114,53 @@ int main(int argc, char *argv[]) {
         else if (strcmp(token, "cd") == 0) {    // FIXME: If no path is given -> segfault
             // get next token
             token = strtok(NULL, " ");
-
-            // remove newline
-            remove_newline(token);
-            chdir(token);
+            // remove newline if a token is found
+            if (token != NULL)
+            {
+                remove_newline(token);
+                chdir(token);
+            }
         }
         else if (strcmp(token, "path") == 0) {
-           return 0; 
+            char *path_input = NULL;
+            size_t len = 0;
+            printf("Give the new path comma separated: ");
+            getline(&path_input, &len, stdin);
+            // tokenize path_input on commas
+            char *path_token = strtok(path_input, ",");
+            // free path
+            free(path);
+            // allocate memory for path
+            path = (char **)malloc(sizeof(char*));
+            if (path == NULL) {
+                fprintf(stderr, "Error allocating memory for path\n");
+                exit(1);
+            }
+            // add each path to path array
+            int i = 0;
+            while (path_token != NULL) {
+                // realloc path to fit all paths
+                path = (char **)realloc(path, sizeof(char*) * (i + 1));
+                if (path == NULL) {
+                    fprintf(stderr, "Error reallocating memory for path\n");
+                    exit(1);
+                }
+                // remove newline from path_token
+                remove_newline(path_token);
+                path[i] = (char *)malloc(strlen(path_token) + 1);
+                if (path[i] == NULL) {
+                    fprintf(stderr, "Error allocating memory for path[%d]\n", i);
+                    exit(1);
+                }
+                strcpy(path[i], path_token);
+                i++;
+                path_token = strtok(NULL, ",");
+            }
+
+
+            printf("%s",path[0]); 
         }
-        else if (strcmp(token, "printpath") == 0)
+        else if (DEBUG && strcmp(token, "printpath") == 0)
         {
             // print all strings in path array
             for (int i = 0; i < sizeof(&path) / sizeof(char *); i++) {
@@ -137,9 +172,11 @@ int main(int argc, char *argv[]) {
         else {
             // check path for commands
             // print current token
-            printf("current token: %s\n", token);
-            // print full commnad
-            printf("full command: %s\n", raw_input);
+            if (DEBUG) {
+                printf("current token: %s\n", token);
+                // print full commnad
+                printf("full command: %s\n", raw_input);
+            }
             
 
             execute_command(path, token, get_args(raw_input));
