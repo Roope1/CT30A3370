@@ -3,6 +3,7 @@
 # include <string.h>
 # include <unistd.h>
 # include <sys/wait.h>
+# include <stdbool.h>
 
 #define DEBUG 1
 
@@ -13,7 +14,8 @@ char *remove_newline(char *str) {
     return str;
 }
 
-void execute_command(char **path, char *command, char *args) {
+// FIXME: adapt to the new input handling system
+int execute_command(char **path, char *command, char *args) {
     // try find command in each path in array
     for (int i = 0; i < sizeof(&path) / sizeof(char*); i++) {
         char *full_path = (char *)malloc(strlen(path[i]) + strlen(command) + 1);
@@ -47,7 +49,10 @@ void execute_command(char **path, char *command, char *args) {
             }
         }
         free(full_path);
+
     }
+    // TODO return the amount of indexes passed during this function
+    return 1;
 }
 
 char* get_args(char *input) {
@@ -90,38 +95,54 @@ int main(int argc, char *argv[]) {
 
 
         // tokenize input on spaces
-        char *token = strtok(input, " ");
 
+        // tokenize input on spaces to a list of arguments
         
-        // DEBUG ONLY
-        if (DEBUG && token == 0) {
-            printf("token was null");
+        // NEW!!
+        /* Before passing the input to the if-else statement that determines what should be done
+        format the input to a list of char* because later on there might be a need for tokenization.
+        if this is not done the strtok pointers break as multiple tokens is not supported in the c language*/
+        char *token = strtok(input, " ");
+        // format tokens as a list
+        char **input_list = (char **)malloc(sizeof(char*));
+        if (input_list == NULL) {
+            fprintf(stderr, "Unable to parse command");
+            continue;
         }
 
-        // if last character is newline set it to null
-        remove_newline(token);
+        int i = 0;
+        while (token != NULL) {
+            token = remove_newline(token);
+            printf("%s\n", token);
+            input_list = (char **)realloc(input_list, sizeof(char*) * (i + 1));
+            input_list[i] = (char *)malloc(sizeof(char) * strlen(token));
+            strcpy(input_list[i], token);
+            i++;
+            token = strtok(NULL, " ");
+        }
 
-        printf("%s\n", token);
+
+        printf("%s\n", input_list[0]);
+        
+        // this index keeps track of what part of the command is being treated,
+        // all functions after this index return the number to add to this index
+        int index = 0;
+        // reindex everything
 
         // check for built in commands
-        if (strcmp(token, "exit") == 0) {
+        if (strcmp(input_list[index], "exit") == 0) {
 
             // TODO: free everything needed
             free(path);
 
             exit(0);
         }
-        else if (strcmp(token, "cd") == 0) {    // FIXME: If no path is given -> segfault
-            // get next token
-            token = strtok(NULL, " ");
-            // remove newline if a token is found
-            if (token != NULL)
-            {
-                remove_newline(token);
-                chdir(token);
-            }
+        else if (strcmp(input_list[index], "cd") == 0) {    
+            chdir(input_list[index++]);
+            index++;
         }
-        else if (strcmp(token, "path") == 0) {
+        else if (strcmp(input_list[index], "path") == 0) {
+            // TODO: make sure everything is freed properly and move this code to a function
             char *path_input = NULL;
             size_t len = 0;
             printf("Give the new path comma separated: ");
@@ -139,6 +160,7 @@ int main(int argc, char *argv[]) {
             // add each path to path array
             int i = 0;
             while (path_token != NULL) {
+                printf("%s\n", path_token);
                 // realloc path to fit all paths
                 path = (char **)realloc(path, sizeof(char*) * (i + 1));
                 if (path == NULL) {
@@ -147,7 +169,7 @@ int main(int argc, char *argv[]) {
                 }
                 // remove newline from path_token
                 remove_newline(path_token);
-                path[i] = (char *)malloc(strlen(path_token) + 1);
+                path[i] = (char *)malloc(strlen(path_token) );
                 if (path[i] == NULL) {
                     fprintf(stderr, "Error allocating memory for path[%d]\n", i);
                     exit(1);
@@ -157,8 +179,14 @@ int main(int argc, char *argv[]) {
                 path_token = strtok(NULL, ",");
             }
 
-
-            printf("%s",path[0]); 
+            if (DEBUG) {
+                // print all strings in path array
+                //for (int i = 0; i < sizeof(&path) / sizeof(char *); i++) {
+                //    fprintf(stdout, "%s\n", path[i]);
+                //}
+                //printf("%s", path[0]);   
+                //printf("%s", path[1]);   
+            }
         }
         else if (DEBUG && strcmp(token, "printpath") == 0)
         {
@@ -179,7 +207,8 @@ int main(int argc, char *argv[]) {
             }
             
 
-            execute_command(path, token, get_args(raw_input));
+            int return_val = execute_command(path, token, get_args(raw_input));
+            index = index + return_val;
 
         }
     }
