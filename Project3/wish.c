@@ -14,9 +14,60 @@ char *remove_newline(char *str) {
     return str;
 }
 
+int get_array_len(char **array) {
+    // loop over array until NULL is found
+    int i = 0;
+    while (array[i] != NULL) {
+        i++;
+    }
+    return i;
+}
+
+
+
 // FIXME: adapt to the new input handling system
-int execute_command(char **path, char *command, char *args) {
-    // try find command in each path in array
+int execute_command(char **input_list, int index, char **path) {
+
+    // get the command from input_list via index
+    char *command = input_list[index];
+    // get arguments for the command if exists -> rest of input_list until | or end
+    // loop over arguments until | or end
+    char **arg_list = (char **)malloc(sizeof(char*));
+    printf("len %d\n", get_array_len(input_list));
+    printf("ind %d\n", index);
+    for (int i = index; i < get_array_len(input_list); i++) {
+        if (DEBUG) {
+            printf("input_list[%d]: %s\n", i, input_list[i]);
+        }
+        if (strcmp(input_list[i], "|") == 0) {
+            printf("pipe found\n"); //TODO: implement piping
+            break;
+        }
+        printf("reallocating arg_list\n");
+        fflush(stdout);
+        arg_list = (char **)realloc(arg_list, sizeof(char*) * ((i - index) + 1));
+        if (arg_list == NULL) {
+            printf("Error reallocating memory for args\n");
+            fprintf(stderr, "Error allocating memory for args\n");
+            exit(1);
+        }
+        arg_list[i] = (char *)malloc(strlen(input_list[i]));
+        printf("starting to copy args\n");
+        printf("copying %s to arg_list[%d]\n", input_list[i], i - index);
+        strcpy(arg_list[i], input_list[i]);
+        if (DEBUG){
+            printf("arg_list[%d]: %s\n", i, arg_list[i]);
+        }
+    }
+
+    if (DEBUG) {
+        printf("\ncommand: %s\n", command);
+        printf("args: %s\n", arg_list[0]);
+        fflush(stdout);
+    }
+
+    printf("starting to search for command\n");
+    // loop over path and try to find the command
     for (int i = 0; i < sizeof(&path) / sizeof(char*); i++) {
         char *full_path = (char *)malloc(strlen(path[i]) + strlen(command) + 1);
         if (full_path == NULL) {
@@ -26,33 +77,32 @@ int execute_command(char **path, char *command, char *args) {
         strcpy(full_path, path[i]);
         strcat(full_path, "/");
         strcat(full_path, command);
-        printf("full path: %s\n", full_path);  
+        if (DEBUG) {
+            printf("full path: %s\n", full_path);  
+        }
 
-        // check if file exists
-        if (access(full_path, F_OK) != -1) {
-            // file exists
+        // check if file exists and is executable
+        if (access(full_path, X_OK) != -1) {
 
-            // create args array
-
-            char *args[] = {full_path, NULL}; 
-            
             // fork and exec
             pid_t pid = fork();
             if (pid < 0) {
                 fprintf(stderr, "Error forking\n");
             }
             else if (pid == 0) {
-                execvp(args[0], args);
+                execvp(arg_list[0], arg_list);
             }
             else {
                 wait(NULL);
+                free(full_path);
+                return 1;
             }
         }
         free(full_path);
 
     }
-    // TODO return the amount of indexes passed during this function
     return 1;
+
 }
 
 char* get_args(char *input) {
@@ -121,8 +171,7 @@ int main(int argc, char *argv[]) {
             token = strtok(NULL, " ");
         }
 
-
-        printf("%s\n", input_list[0]);
+        printf("input_list[0]: %s\n", input_list[0]);
         
         // this index keeps track of what part of the command is being treated,
         // all functions after this index return the number to add to this index
@@ -188,7 +237,7 @@ int main(int argc, char *argv[]) {
                 //printf("%s", path[1]);   
             }
         }
-        else if (DEBUG && strcmp(token, "printpath") == 0)
+        else if (DEBUG && strcmp(input_list[index], "printpath") == 0)
         {
             // print all strings in path array
             for (int i = 0; i < sizeof(&path) / sizeof(char *); i++) {
@@ -201,13 +250,11 @@ int main(int argc, char *argv[]) {
             // check path for commands
             // print current token
             if (DEBUG) {
-                printf("current token: %s\n", token);
                 // print full commnad
-                printf("full command: %s\n", raw_input);
             }
             
-
-            int return_val = execute_command(path, token, get_args(raw_input));
+             int return_val = execute_command(input_list, index, path);
+            //int return_val = execute_command(path, token, get_args(raw_input));
             index = index + return_val;
 
         }
