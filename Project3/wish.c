@@ -7,6 +7,12 @@
 
 #define DEBUG 1
 
+typedef struct Command {
+    char *cmd;
+    char** args;
+    int no_of_args;
+} COMMAND;
+
 char *remove_newline(char *str) {
     if (str[strlen(str) - 1] == '\n') {
         str[strlen(str) - 1] = '\0';
@@ -111,6 +117,7 @@ int execute_command(char **input_list, int index, char **path) {
 
 int main(int argc, char *argv[]) {
 
+
     char **path = NULL;
     path = (char **)malloc(sizeof(char*));
     if (path == NULL) {
@@ -136,10 +143,13 @@ int main(int argc, char *argv[]) {
         }
         strcpy(raw_input, input);
 
+        COMMAND** commands = (COMMAND**)malloc(sizeof(COMMAND*));
+        // TODO somehow figure out if the commands are piped (|) or concurrently executed (&)
 
-        // tokenize input on spaces
+        // !!!!
+        // TODO: parse input into one or more COMMAND structs
+        /* Command stuct used to handle piping and parallel excecution easier*/
 
-        // tokenize input on spaces to a list of arguments
         
         // NEW!!
         /* Before passing the input to the if-else statement that determines what should be done
@@ -162,6 +172,47 @@ int main(int argc, char *argv[]) {
             strcpy(input_list[i], token);
             i++;
             token = strtok(NULL, " ");
+        }
+
+        // parse input into COMMAND structs
+        COMMAND* command = (COMMAND*)malloc(sizeof(COMMAND));
+        command->no_of_args = 0;
+        // loop over input list
+        int i = 0;
+        int num_of_cmd = 0;
+
+        while(input_list[i] != NULL)
+        {
+            // new command
+            if (command->cmd == NULL)
+            {
+                strcpy(command->cmd, input_list[i]);
+            }
+            else if (strcmp(input_list[i], "|") == 0)
+            {   
+                // somehow mark this as piped 
+                commands = realloc(commands, (num_of_cmd + 1) * sizeof(COMMAND));
+                commands[num_of_cmd] = command;
+                num_of_cmd++;
+                command = (COMMAND*)malloc(sizeof(COMMAND));
+                command->no_of_args = 0;
+            }
+            else if (strcmp(input_list[i], "&"))
+            {
+                // somehow mark this as parallel execution
+                commands = realloc(commands, (num_of_cmd + 1) * sizeof(COMMAND));
+                commands[num_of_cmd] = command;
+                num_of_cmd++;
+                command = (COMMAND*)malloc(sizeof(COMMAND));
+                command->no_of_args = 0;
+            } 
+            else
+            {
+                command->args = (char *)realloc(command->args, (command->no_of_args + 1) * sizeof(char *));
+                command->args[command->no_of_args] = input_list[i];
+                command->no_of_args = command->no_of_args + 1;
+            }
+            i++;
         }
 
         printf("input_list[0]: %s\n", input_list[0]);
