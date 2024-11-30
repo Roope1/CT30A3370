@@ -27,34 +27,35 @@ int get_array_len(char **array) {
 
 // FIXME: adapt to the new input handling system
 int execute_command(char **input_list, int index, char **path) {
-
+    int return_val = 0;
     // get the command from input_list via index
     char *command = input_list[index];
+
     // get arguments for the command if exists -> rest of input_list until | or end
     // loop over arguments until | or end
     char **arg_list = (char **)malloc(sizeof(char*));
-    printf("len %d\n", get_array_len(input_list));
-    printf("ind %d\n", index);
+
     for (int i = index; i < get_array_len(input_list); i++) {
+        return_val++;
+
         if (DEBUG) {
             printf("input_list[%d]: %s\n", i, input_list[i]);
         }
+
         if (strcmp(input_list[i], "|") == 0) {
             printf("pipe found\n"); //TODO: implement piping
             break;
         }
-        printf("reallocating arg_list\n");
-        fflush(stdout);
+
         arg_list = (char **)realloc(arg_list, sizeof(char*) * ((i - index) + 1));
         if (arg_list == NULL) {
-            printf("Error reallocating memory for args\n");
             fprintf(stderr, "Error allocating memory for args\n");
             exit(1);
         }
+
         arg_list[i] = (char *)malloc(strlen(input_list[i]));
-        printf("starting to copy args\n");
-        printf("copying %s to arg_list[%d]\n", input_list[i], i - index);
         strcpy(arg_list[i], input_list[i]);
+
         if (DEBUG){
             printf("arg_list[%d]: %s\n", i, arg_list[i]);
         }
@@ -74,9 +75,11 @@ int execute_command(char **input_list, int index, char **path) {
             fprintf(stderr, "Error allocating memory for full_path\n");
             exit(1);
         }
+
         strcpy(full_path, path[i]);
         strcat(full_path, "/");
         strcat(full_path, command);
+
         if (DEBUG) {
             printf("full path: %s\n", full_path);  
         }
@@ -101,18 +104,8 @@ int execute_command(char **input_list, int index, char **path) {
         free(full_path);
 
     }
-    return 1;
+    return return_val;
 
-}
-
-char* get_args(char *input) {
-    char *args = (char *)malloc(strlen(input) + 1);
-    if (args == NULL) {
-        fprintf(stderr, "Error allocating memory for args\n");
-    }
-    strcpy(args, input);
-    printf("args: %s\n", args);
-    return args;
 }
 
 
@@ -192,6 +185,7 @@ int main(int argc, char *argv[]) {
         }
         else if (strcmp(input_list[index], "path") == 0) {
             // TODO: make sure everything is freed properly and move this code to a function
+            // check instructions, this is probably done extremely wrong as its not very terminal-ish
             char *path_input = NULL;
             size_t len = 0;
             printf("Give the new path comma separated: ");
@@ -209,7 +203,9 @@ int main(int argc, char *argv[]) {
             // add each path to path array
             int i = 0;
             while (path_token != NULL) {
-                printf("%s\n", path_token);
+                if (DEBUG) {
+                    printf("%s\n", path_token);
+                }
                 // realloc path to fit all paths
                 path = (char **)realloc(path, sizeof(char*) * (i + 1));
                 if (path == NULL) {
@@ -223,6 +219,7 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, "Error allocating memory for path[%d]\n", i);
                     exit(1);
                 }
+
                 strcpy(path[i], path_token);
                 i++;
                 path_token = strtok(NULL, ",");
@@ -253,8 +250,7 @@ int main(int argc, char *argv[]) {
                 // print full commnad
             }
             
-             int return_val = execute_command(input_list, index, path);
-            //int return_val = execute_command(path, token, get_args(raw_input));
+            int return_val = execute_command(input_list, index, path);
             index = index + return_val;
 
         }
