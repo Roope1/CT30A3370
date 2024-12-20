@@ -1,0 +1,11 @@
+pwd
+cd ..
+pwd
+mkdir test_folder
+cd test_folder
+pwd
+echo hello world > testfile.txt
+ls -lah
+cd ..
+cat test_folder/testfile.txt
+exit

@@ -35,7 +35,6 @@ pid_t execute_command(char *command[MAX_LENGTH], char *path_list[MAX_LENGTH])
 
         remove_newline(full_path);
 
-        printf("full path: %s\n", full_path);
         // check if file exists and is executable
         if (access(full_path, X_OK) != -1) {
             // fork and exec
@@ -58,7 +57,17 @@ pid_t execute_command(char *command[MAX_LENGTH], char *path_list[MAX_LENGTH])
 bool execute_builtin(char *command[MAX_LENGTH], char *path_list[MAX_LENGTH])
 {
     if (strcmp(command[0], "exit") == 0) {
-        // free some shit 
+       
+        //int i = 0;
+        //while(path_list[i] != NULL) {
+        //    free(path_list[i]);
+        //    i++;
+        //}
+        int j = 0;
+        while(command[j] != NULL) {
+            free(command[j]);
+            j++;
+        }
         exit(0);
     }
     else if (strcmp(command[0], "cd") == 0) {
@@ -82,25 +91,11 @@ bool execute_builtin(char *command[MAX_LENGTH], char *path_list[MAX_LENGTH])
         while (path_token != NULL) {
             // remove newline from path_token
             remove_newline(path_token);
-            path_list[i] = (char *)malloc(strlen(path_token));
-            if (path_list[i] == NULL) {
-                fprintf(stderr, "Error allocating memory for path[%d]\n", i);
-                exit(1);
-            }
+            path_list[i] = path_token;
+            path_list[i + 1] = NULL;
 
-            strcpy(path_list[i], path_token);
             i++;
             path_token = strtok(NULL, ",");
-        }
-        return true;
-    }
-    else if (strcmp(command[0], "printpath") == 0) {
-        // print all strings in path array
-        for (int i = 0; i < MAX_LENGTH; i++) {
-            if (path_list[i] == NULL) {
-                break;
-            }
-            fprintf(stdout, "%s\n", path_list[i]);
         }
         return true;
     }
@@ -176,6 +171,8 @@ void parse_input(char *input, char *pathList[MAX_LENGTH])
         token = strtok(NULL, " ");
     }
 
+    free(input);
+
     // handle last command
     if (i != 0)
     {
@@ -186,7 +183,6 @@ void parse_input(char *input, char *pathList[MAX_LENGTH])
         is_builtin = execute_builtin(command, pathList);
 
         int pid = (!is_builtin) ? execute_command(command, pathList) : -1;
-        printf("pid: %d\n", pid);
         if (pid != -1) {
             pids[pid_count] = pid;
             pid_count++;
@@ -198,8 +194,10 @@ void parse_input(char *input, char *pathList[MAX_LENGTH])
         waitpid(pids[i], NULL, 0);
     }
 
+    //free(input);
     // redirect output back to stdout
     freopen("/dev/tty", "w", stdout);
+
     
 }
 
@@ -217,21 +215,34 @@ void interactive()
     do {
         printf("wish> ");
         feof = getline(&buffer, &buf_size, stdin);
-        // remove newline from buffer
-        //buffer[strlen(buffer) - 1] = '\0';
-
         parse_input(buffer, pathList);
+        free(buffer);
 
     } while (feof != -1);
 
-    free(buffer);
     return;
 }
 
 void batch(char *filename)
 {
+    char *pathList[MAX_LENGTH];
     FILE *file = fopen(filename, "r");
-    // TODO implement
+
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        exit(1);
+    }
+
+    pathList[0] = "/bin";
+    pathList[1] = NULL; // end of path list is set to NULL to indicate end of list 
+
+    char *line = NULL;
+    size_t len = 0;
+
+    while (getline(&line, &len, file) != -1) {
+        parse_input(line, pathList);
+    }
+    free(line);
     fclose(file);
     return;
 }
