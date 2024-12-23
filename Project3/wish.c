@@ -69,6 +69,7 @@ bool execute_builtin(char *command[MAX_LENGTH], char *path_list[MAX_LENGTH])
             j++;
         }
         exit(0);
+       //return true;
     }
     else if (strcmp(command[0], "cd") == 0) {
         if (command[1] == NULL) {
@@ -171,7 +172,6 @@ void parse_input(char *input, char *pathList[MAX_LENGTH])
         token = strtok(NULL, " ");
     }
 
-    free(input);
 
     // handle last command
     if (i != 0)
@@ -216,10 +216,10 @@ void interactive()
         printf("wish> ");
         feof = getline(&buffer, &buf_size, stdin);
         parse_input(buffer, pathList);
-        free(buffer);
 
     } while (feof != -1);
 
+    free(buffer);
     return;
 }
 
