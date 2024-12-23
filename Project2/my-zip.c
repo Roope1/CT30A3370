@@ -5,6 +5,7 @@
 #define BUFFER_SIZE 512
 
 void readfile(char *filename);
+void readfile2(char *filename);
 
 int main(int argc, char *argv[])
 {
@@ -28,8 +29,7 @@ void readfile(char *filename)
 {
     FILE *fp;
     char buffer[BUFFER_SIZE];
-    char current_char = '1'; // initialized with a number to know for first time check
-    int count = 0;
+    char current_char; 
 
     fp = fopen(filename, "r");
     if (fp == NULL)
@@ -40,46 +40,23 @@ void readfile(char *filename)
 
     while (fgets(buffer, BUFFER_SIZE, fp) != NULL)
     {
-        for (int i = 0; i < BUFFER_SIZE - 1; i++)
+        int count = 1;
+        for (int i = 0; buffer[i] != '\0'; i++)
         {
-            if (buffer[i] == '\n') // end of line continue to next
-            {
-                fwrite(&count, sizeof(int), 1, stdout);
-                fwrite(&current_char, sizeof(char), 1, stdout);
-                current_char = buffer[i];
-                count = 1;
-                fwrite("\n", sizeof(char), 1, fp);
-                continue;
-            }
-
-            if (buffer[i] == '\0') // end of doc
-            {
-                fwrite(&count, sizeof(int), 1, stdout);
-                fwrite(&current_char, sizeof(char), 1, stdout);
-                break;
-            }
-
-            // initialize current_char with the first character of the buffer
-            // FOR 1st PASSTHROUGH ONLY
-            if (current_char == '1')
-            {
-                current_char = buffer[0];
-            }
-
-            /* character has switched == write down results*/
-            if (buffer[i] != current_char)
-            {
-                fwrite(&count, sizeof(int), 1, stdout);
-                fwrite(&current_char, sizeof(char), 1, stdout);
-                current_char = buffer[i];
-                count = 1;
-            }
-
-            else
+            current_char = buffer[i];
+            if (current_char == buffer[i + 1])
             {
                 count++;
             }
+            else
+            {
+                fwrite(&count, sizeof(int), 1, stdout);
+                count = 1;
+                fwrite(&current_char, sizeof(char), 1, stdout);
+            }
+        
         }
-    }
+    } 
     fclose(fp);
 }
+
