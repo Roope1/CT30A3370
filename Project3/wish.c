@@ -163,7 +163,8 @@ void parse_input(char *input, char *pathList[MAX_LENGTH])
                     pid_count++;
                 }
             } 
-
+            command[0] = NULL;
+            i = 0;
         }
         else
         {
