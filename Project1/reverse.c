@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
     while ((getline(&line, &len, input_stream)) != -1)
     {
-        if (strlen(line) == 1)
+        if (strlen(line) == 1 && input_stream == stdin)
         {
             break;
         }
